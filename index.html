@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>VRP ACO PRO</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">🚚</div>
+      <div class="brand-text">
+        <div class="title">VRP ACO</div>
+        <div class="subtitle">CVRP + ACO (Leaflet)</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn ghost" onclick="resetMap()">Reset</button>
+      <button class="btn primary" onclick="runACO()">Run ACO</button>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="box">
+      <h3>🏭 Kho</h3>
+      <div class="grid2">
+        <div class="field">
+          <label>Vĩ độ</label>
+          <input id="depotLat" placeholder="18.67">
+        </div>
+        <div class="field">
+          <label>Kinh độ</label>
+          <input id="depotLng" placeholder="105.69">
+        </div>
+      </div>
+      <button class="btn full" onclick="setDepotManual()">Nhập kho</button>
+    </div>
+
+    <div class="box">
+      <h3>👤 Khách</h3>
+      <div class="grid2">
+        <div class="field">
+          <label>Vĩ độ</label>
+          <input id="lat" placeholder="18.67">
+        </div>
+        <div class="field">
+          <label>Kinh độ</label>
+          <input id="lng" placeholder="105.69">
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label>Nhu cầu</label>
+          <input id="demand" value="10">
+        </div>
+        <div class="field">
+          <label>Q</label>
+          <input id="capacity" value="30">
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label>Số xe</label>
+          <input id="vehicleCount" value="3">
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button class="btn full secondary" onclick="addCustomerManual()">Nhập khách</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="box">
+      <h3>🎲 Dữ liệu mẫu</h3>
+      <div class="grid2">
+        <div class="field">
+          <label>Số khách</label>
+          <input id="sampleCount" value="10">
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button class="btn full" onclick="addRandomCustomers()">Random</button>
+        </div>
+      </div>
+      <button class="btn full secondary" onclick="resetAndAddRandomCustomers()">Reset + Random</button>
+      <div class="note">
+        Chọn số khách rồi bấm Random để thêm nhanh các điểm mẫu.
+      </div>
+    </div>
+
+    <div class="box compact">
+      <h3>⚙️ Điều khiển</h3>
+      <div class="toggle-row">
+        <label class="toggle">
+          <input id="showAnts" type="checkbox" />
+          <span class="toggle-ui"></span>
+          <span class="toggle-text">Xem đàn kiến</span>
+        </label>
+        <div class="field mini">
+          <label>Số kiến vẽ</label>
+          <input id="showAntCount" value="6">
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field mini">
+          <label>Tốc độ (ms)</label>
+          <input id="antDelayMs" value="180">
+        </div>
+        <div class="note" style="margin-top:6px">
+          Tăng ms để đàn kiến đi chậm hơn (VD: 250–500).
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" onclick="mode='depot'">Click kho</button>
+        <button class="btn" onclick="mode='customer'">Click khách</button>
+        <button class="btn secondary" onclick="mode='view'">Xem</button>
+      </div>
+      <div class="actions">
+        <button class="btn primary" onclick="runACO()">Run</button>
+        <button class="btn secondary" onclick="clearCustomers()">Xóa</button>
+        <button class="btn danger" onclick="resetMap()">Reset</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="hint">
+    </div>
+    <div id="map"></div>
+
+    <h3 class="result-title">📊 Kết quả</h3>
+    <table id="resultTable">
+      <thead>
+        <tr>
+          <th>Xe</th>
+          <th>Chặng</th>
+          <th>Km</th>
+          <th>Tích luỹ (km)</th>
+          <th>Load</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div id="distanceSummary" class="distance-summary"></div>
+  </main>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
