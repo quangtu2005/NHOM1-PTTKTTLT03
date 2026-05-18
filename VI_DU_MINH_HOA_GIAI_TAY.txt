@@ -1,0 +1,253 @@
+
+
+1) DỮ LIỆU (TP. VINH — BA ĐIỂM GIAO)
+------------------------------------
+  Kho:
+    vĩ độ 18,670 — kinh độ 105,690
+
+  Ba điểm giao:
+
+    | Ký hiệu | Khu vực (gợi nhớ) | Vĩ độ   | Kinh độ  | Nhu cầu hàng |
+    |---------|-------------------|---------|----------|--------------|
+    | A       | Trường Thi        | 18,6880 | 105,6720 |      7       |
+    | B       | Quang Trung       | 18,6920 | 105,6980 |      5       |
+    | C       | Hồng Sơn          | 18,6850 | 105,7320 |      9       |
+
+  Khung giờ được phép giao (theo giờ trong ngày, cùng hệ với mốc xuất phát
+  7 giờ 30 sáng của bài toán):
+
+    A: từ 7,5 h đến 9,5 h
+    B: từ 8,25 h đến 11,0 h
+    C: từ 8,0 h đến 11,5 h
+
+  Thiết lập để buộc hai xe: số xe = 2, sức chứa mỗi xe = 15 đơn vị hàng.
+  (Tổng nhu cầu 21 > 15; chỉ có thể gom A và B trên một xe vì 7+5 ≤ 15,
+  còn các cặp có C đều vượt 15.)
+
+
+2) LỜI GIẢI MINH HỌA (HAI CHUYẾN TÁCH NHAU)
+--------------------------------------------
+  Một lời giải hợp lệ và dễ theo dõi trên bản đồ:
+
+    Chuyến một: kho → A → B → về kho (tổng hàng 12, không vượt 15).
+    Chuyến hai: kho → C → về kho (tổng hàng 9).
+
+  Hai chuyến đều xuất phát cùng mốc 7 giờ 30 (trong mô hình, mỗi xe tính
+  thời gian riêng từ mốc đó, không chờ chuyến kia hoàn tất). Khoảng cách
+  thực tế giữa các điểm lấy theo đường cong trên mặt đất (quãng đường chim
+  bay chuẩn); thời gian chạy phụ thuộc tốc độ — buổi sáng giờ cao điểm xe
+  chậm hơn, nên cùng một quãng có thể mất thêm thời gian so với giờ thưa.
+
+  Sau mỗi lần dừng giao, hệ thống cộng thêm vài phút phục vụ. Nếu đến sớm
+  hơn đầu khung thì thời điểm “bắt đầu giao” được kéo tới đúng đầu khung;
+  nếu đến sau cuối khung thì phần trễ được quy đổi thành một khoản phạt
+  cộng vào chỉ số tổng của lộ trình. Với các khung giờ đã chọn ở trên,
+  lời giải minh họa này không vi phạm trễ (phạt khung giờ bằng không).
+
+
+3) HOẠT ĐỘNG TRONG CODE — TỪNG BƯỚC TỚI KẾT QUẢ HIỂN THỊ
+---------------------------------------------------------
+  Phần này mô tả đúng thứ tự xử lý trong file app.js (tên hàm giữ nguyên để
+  bạn đối chiếu), rồi phần (4) bên dưới sẽ tính số cụ thể cho ví dụ Vinh.
+
+
+  Bước 1 — Đọc thông tin từ giao diện khi chạy tối ưu
+    Hàm runACO() đọc số xe (vehicleCount), sức chứa Q (capacity), và danh
+    sách khách đã lưu trong bộ nhớ (allCustomers). Nếu không có khách thì dừng
+    và báo lỗi.
+
+
+  Bước 2 — Khởi tạo “mùi” trên các cạnh (pheromone)
+    Hàm init() tạo một bảng pheromone: với mọi cặp đỉnh khác nhau (kho và từng
+    khách), gán một giá trị ban đầu tau0. Đây là điểm xuất phát cho thuật
+    toán kiến: các cạnh sau này được tăng hoặc giảm mùi qua nhiều vòng lặp.
+
+
+  Bước 3 — Dựng một bộ tuyến đường cho tất cả xe (một “con kiến” thử một lần)
+    Hàm build(numVehicles, capacity) là lõi chia chuyến:
+    • Sao chép danh sách khách chưa thăm vào unvisited.
+    • Với từng xe chỉ số v từ 0 đến (số xe − 1):
+        – Bắt đầu route tại kho: tải load = 0, biến giờ currentHour = DEPART_HOUR
+          (7,5 h).
+        – Trong khi còn khách trong unvisited:
+            · feasible = các khách còn lại mà load + demand ≤ capacity.
+              Nếu rỗng → thoát vòng while (xe này không nhét thêm ai).
+            · reachable = các khách trong feasible mà (currentHour + thời gian
+              đi tới đó) ≤ timeEnd + 1 (cho phép “gần trễ” một giờ khi chọn
+              điểm; trễ thật vẫn bị phạt sau trong timeWindowPenalty).
+            · Nếu reachable không rỗng thì chỉ xét reachable; nếu rỗng thì
+              xét lại toàn feasible (để không kẹt cứng).
+            · selectNext(...) chọn một khách trong danh sách vừa lọc: xác suất
+              phụ thuộc pheromone cạnh hiện tại → khách, heuristic 1/(km+ε),
+              và hệ số “gấp” khung giờ (điểm sắp hết cửa được ưu tiên hơn).
+            · Cộng thời gian đi: travelTime(điểm hiện tại, khách tiếp, currentHour)
+              — bên trong gọi dist (Haversine) và trafficFactor(giờ) để ra tốc
+              độ thực, rồi km / tốc độ.
+            · Nếu đến sớm hơn timeStart thì kéo currentHour lên timeStart.
+            · Cộng demand vào load, ghi khách vào route, currentHour += 5 phút
+              phục vụ, xóa khách khỏi unvisited.
+        – Kết thúc route bằng cạnh về kho (một bản sao depot).
+    • Khi hết vòng xe: nếu unvisited vẫn còn người → build trả về null (không
+      có lời giải khả thi với số xe và Q đó); nếu hết khách → trả về mảng các
+      route (mỗi phần tử là một mảng các điểm kho → … → kho).
+
+    Với ví dụ Vinh và Q = 15: một xe không thể chở đủ cả A, B, C nên sau xe
+    đầu (đã gom một hoặc hai điểm hợp lệ) xe sau phải phục vụ phần còn lại.
+    Thứ tự cụ thể (A→B rồi C hay C trước…) do selectNext ngẫu nhiên có trọng
+    số — không cố định, nhưng luôn thỏa capacity và (trừ khi fallback) khung
+    reachable.
+
+
+  Bước 4 — Chấm điểm một bộ tuyến: hàm cost(routes)
+    • Cộng mọi cạnh dist(u,v) trên mọi route → tổng kilômét thực (Haversine).
+    • Với mỗi route, timeWindowPenalty(route) mô phỏng lại thời gian từ
+      DEPART_HOUR: mỗi cạnh dùng travelTime, chờ đầu khung nếu sớm, nếu sau
+      timeEnd thì cộng (giờ trễ) × PENALTY_LATE, sau mỗi điểm khách + 5 phút
+      phục vụ (kể cả chặng về kho trong vòng lặp penalty — giống code).
+    • cost = tổng km + tổng penalty (đây là giá trị cần nhỏ nhất).
+
+
+  Bước 5 — Vòng lặp chính ACO (runACO)
+    Lặp ACO.iterations vòng; mỗi vòng có ACO.ants con kiến:
+    • Gọi build(...) → nếu được routes thì tính c = cost(routes).
+    • Nếu c nhỏ hơn bestCost thì lưu bản sao routes vào best.
+    • deposit(routes, c): càng cost nhỏ thì càng nhiều mùi cộng vào các cạnh
+      route đó (lượng ~ q/c).
+    • Cuối vòng: evaporate() nhân tất cả pheromone với (1 − rho) để “bay hơi”,
+      giữ mùi tối thiểu để không bằng 0.
+
+    Như vậy qua nhiều vòng, các cạnh hay nằm trong lời giải rẻ dần được nhớ
+    mạnh hơn; các thử đường vẫn đa dạng nhờ random trong selectNext.
+
+
+  Bước 6 — Tinh chỉnh lời giải tốt nhất
+    applyLocalSearch(best) thử các chỉnh sửa cục bộ (đổi thứ tự hai cạnh,
+    chuyển đoạn sang xe khác trong giới hạn Q, …) miễn giảm cost.
+
+
+  Bước 7 — Chuẩn hóa dữ liệu để hiển thị
+    refreshAllRoutes(best) cập nhật lại arrival (km lũy kế kiểu hiển thị),
+    arrivalHour, load theo từng điểm trên mỗi route.
+
+
+  Bước 8 — Kết quả lên màn hình
+    draw(best) vẽ polyline mỗi xe một màu; showTable(best) điền bảng từng
+    cạnh, km từng chặng, tải, khung giờ, giờ đến; đồng thời hiển thị tổng km,
+    tổng penalty, cost = km + penalty và số điểm vi phạm khung giờ.
+
+    Đó là “kết quả cuối cùng” bạn thấy sau khi chạy — được lấy từ best sau ACO
+    + local search, không phải chỉ một lần build ngẫu nhiên đơn lẻ.
+
+
+4) TÍNH CHI TIẾT TỪNG BƯỚC ĐẾN KẾT QUẢ CUỐI (LỜI GIẢI MINH HỌA — CON SỐ)
+--------------------------------------------------------------
+  Phần này là “máy tính tay” cho một phân bổ cố định (Kho→A→B→Kho và
+  Kho→C→Kho). Các quãng đường là dist(...); thời gian đi là travelTime(...);
+  chờ khung và phạt trùng tinh thần timeWindowPenalty(...) trong Bước 4.
+  Kết quả số km / cost cuối trên giao diện là best sau ACO — có thể khác thứ
+  tự điểm nhưng cùng một kiểu công thức.
+
+
+  Quy ước dùng trong chuỗi tính dưới đây
+  • Cách đọc “h” thập phân: số sau dấu phẩy là **phút tính theo phần giờ**,
+    không phải “mươi lăm phút kiểu đồng hồ” theo chữ số. Ví dụ: 7,50 h = 7 h 30
+    phút; 8,25 h = 8 h 15 phút (vì 0,25 h = 15 phút); 8,333… h = 8 h 20 phút
+    (vì 0,333… h = 20 phút). Nếu coi nhầm 8,25 như “8 giờ 25 phút” thì cộng 5
+    phút sẽ thành 8 h 30 — đó là hiểu sai ký hiệu; trong bảng dữ liệu,
+    timeStart = 8,25 nghĩa là **8 giờ 15 phút**.
+  • Mối giờ xuất phát của mỗi chuyến: 7 giờ 30 = 7,50 h (hai xe đều dùng
+    lại mốc này, không cộng dồn giữa xe).
+  • Quãng đường chim bay với bán kính Trái Đất 6371 km — các số km dưới đây
+    là kết quả làm tròn ba chữ số thập phân (kilômét).
+  • Khung giờ đông buổi sáng (trước 9 h trong ví dụ cho các cạnh đầu): vận
+    tốc 20 km/h; ngoài khung đông trên lộ trình minh họa vẫn có thể là 40 km/h
+    (ở đây các cạnh tính đều còn trong khung chậm).
+  • Thời gian đi một cạnh = km ÷ km/h.
+  • Sau mỗi lần dừng giao tại điểm khách: + 5 phút = 1/12 giờ ≈ 0,0833 h.
+
+  Bảng quãng đường cần cho hai chuyến minh họa
+
+    Kho ↔ A (Trường Thi):     2,757 km
+    A ↔ B (Quang Trung):      2,738 km
+    B ↔ Kho:                  2,587 km
+    Kho ↔ C (Hồng Sơn):       4,728 km
+
+    Tổng chuyến một (Kho → A → B → Kho):
+      2,757 + 2,738 + 2,587 = 8,082 km
+
+    Tổng chuyến hai (Kho → C → Kho):
+      4,728 + 4,728 = 9,456 km
+
+    Tổng cả hai chuyến: 8,082 + 9,456 = 17,538 km
+
+
+  Chuyến một — từng bước
+  Bước 0: Đặt h = 7,50 h (xuất phát từ Kho).
+
+  Bước 1 — Cạnh Kho → A
+    • km = 2,757; trong khung đông → 20 km/h.
+    • Thời gian đi = 2,757 ÷ 20 = 0,13785 h (tám phút mười sáu giây).
+    • Sau khi đi: h = 7,63785 h (khoảng 7 h 38).
+    • Khung A [7,50 ; 9,50]: không chờ đầu khung, không trễ.
+    • Phục vụ 5 phút → h = 7,72118 h.
+
+  Bước 2 — Cạnh A → B
+    • km = 2,738; giờ hiện tại vẫn trước 9 h → 20 km/h.
+    • Thời gian đi = 0,13690 h (tám phút mười ba giây).
+    • Sau khi đi: h ≈ 7,858 h (khoảng 7 h 51).
+    • Khung B bắt đầu 8,25 h (= 8 h 15 phút, xem quy ước ở trên) → đến sớm
+      → chờ tới đúng 8,25 h.
+    • Phục vụ 5 phút: 8 h 15 + 5 phút = 8 h 20 → h = 8,33333 h. (Nếu mốc chờ
+      lại là 8 h 25 thì +5 phút mới là 8 h 30; ở đây mốc là 8 h 15 nên ra
+      8 h 20, không phải 8 h 30.)
+
+  Bước 3 — Cạnh B → Kho
+    • km = 2,587; vẫn trước 9 h → 20 km/h.
+    • Thời gian đi = 0,12935 h (bảy phút bốn sáu giây).
+    • Đến Kho khoảng h = 8,463 h (8 h 28). Không kiểm tra khung trễ cho kho.
+
+
+  Chuyến hai — từng bước (chuỗi giờ độc lập với chuyến một)
+  Bước 0: Đặt lại h = 7,50 h.
+
+  Bước 1 — Cạnh Kho → C
+    • km = 4,728; 20 km/h.
+    • Thời gian đi = 0,23640 h (mười bốn phút mười hai giây).
+    • Sau khi đi: h ≈ 7,736 h (7 h 44).
+    • Khung C bắt đầu 8,00 h → chờ tới 8,00 h.
+    • Phục vụ 5 phút → h = 8,08333 h.
+
+  Bước 2 — Cạnh C → Kho
+    • km = 4,728; vẫn trước 9 h → 20 km/h.
+    • Thời gian đi = 0,23640 h.
+    • Đến Kho khoảng h = 8,320 h (8 h 19).
+
+
+  Phần phạt khung giờ (để có “phạt” trong chỉ số tổng)
+    • A: ~7,638 h ∈ [7,50 ; 9,50] → không trễ.
+    • B: sau chờ, giao trong [8,25 ; 11,0].
+    • C: sau chờ, trong [8,00 ; 11,5].
+    → Tổng phạt = 0.
+
+
+  Kết quả cuối cùng gom một chỗ
+    • Tổng quãng đường (hai chuyến): 17,538 km.
+    • Tổng phạt khung giờ: 0.
+    • Chỉ số chi phí kiểu “km + phạt” hiển thị trong chương trình: 17,538.
+
+
+  Ghi chú
+    • Làm tròn khác một chữ số ở km chỉ lệch vài giây ở giờ đến; phạt vẫn 0.
+    • Chương trình có thể đưa ra thứ tự khách khác nhưng chuỗi “đo km → đổi
+      giờ theo tốc độ → chờ/trễ → cộng phục vụ → cộng phạt → cộng tổng km”
+      luôn như trên.
+
+
+================================================================================
+  Tóm tắt
+  • Trong code: init → lặp (build → cost → deposit → evaporate) →
+    applyLocalSearch → refreshAllRoutes → draw + showTable.
+  • Trong ví dụ số: dist / travelTime / chờ khung → penalty = 0 → tổng km
+    hai chuyến ~17,54 km, cost trùng km khi không phạt.
+================================================================================
+
